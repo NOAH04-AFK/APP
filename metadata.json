@@ -1,0 +1,7 @@
+{
+  "name": "PC Master Builder AI",
+  "description": "Aplicación inteligente para construir, validar y compartir configuraciones de PC con ayuda de Gemini AI.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
