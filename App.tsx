@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Cpu, Scan, BarChart2, Users, LogOut, Plus, Trash2, CheckCircle, AlertTriangle, X, Search, Filter, Monitor, Zap, ArrowRight, Star } from 'lucide-react';
+import { Layout, Cpu, Scan, BarChart2, Users, LogOut, Plus, Trash2, CheckCircle, AlertTriangle, X, Search, Filter, Monitor, Zap, ArrowRight, Star, Save, Folder, Clock, ChevronRight } from 'lucide-react';
 import { ViewState, User, Build, PCComponent, ComponentType } from './types';
 import { validateBuildWithGemini, estimatePerformance } from './services/geminiService';
 import { Scanner } from './components/Scanner';
@@ -110,6 +110,8 @@ export default function App() {
     components: [],
     totalPrice: 0
   });
+
+  const [savedBuilds, setSavedBuilds] = useState<Build[]>([]);
   
   // Validation State
   const [validating, setValidating] = useState(false);
@@ -122,6 +124,18 @@ export default function App() {
   // Component Filtering
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+
+  // Load saved builds on startup
+  useEffect(() => {
+    const saved = localStorage.getItem('pc_builder_saves');
+    if (saved) {
+      try {
+        setSavedBuilds(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to load builds", e);
+      }
+    }
+  }, []);
 
   // Auth Handlers
   const handleGuestLogin = () => {
@@ -156,6 +170,41 @@ export default function App() {
       setValidationResult(null);
       setBenchmarkData(null);
   }
+
+  const saveCurrentBuild = () => {
+    if (currentBuild.components.length === 0) {
+      alert("No puedes guardar una build vacía.");
+      return;
+    }
+    const name = prompt("Nombre para esta configuración:", currentBuild.name);
+    if (name) {
+      const newBuild: Build = {
+        ...currentBuild,
+        id: Date.now().toString(),
+        name: name,
+        date: new Date().toLocaleDateString()
+      };
+      const updatedSaves = [newBuild, ...savedBuilds];
+      setSavedBuilds(updatedSaves);
+      localStorage.setItem('pc_builder_saves', JSON.stringify(updatedSaves));
+      alert("Configuración guardada exitosamente.");
+    }
+  };
+
+  const deleteSavedBuild = (id: string) => {
+    if(confirm("¿Estás seguro de eliminar esta configuración?")) {
+      const updatedSaves = savedBuilds.filter(b => b.id !== id);
+      setSavedBuilds(updatedSaves);
+      localStorage.setItem('pc_builder_saves', JSON.stringify(updatedSaves));
+    }
+  };
+
+  const loadSavedBuild = (build: Build) => {
+    setCurrentBuild({ ...build }); // Create copy to avoid ref issues
+    setValidationResult(null);
+    setBenchmarkData(null);
+    setView(ViewState.BUILDER);
+  };
 
   // AI Actions
   const runValidation = async () => {
@@ -260,18 +309,18 @@ export default function App() {
                         onClick={() => setView(ViewState.SCANNER)}
                     />
                     <DashboardCard 
+                        title="Mis Builds" 
+                        desc="Ver configuraciones guardadas"
+                        icon={<Folder size={32} />}
+                        color="pink"
+                        onClick={() => setView(ViewState.SAVED_BUILDS)}
+                    />
+                    <DashboardCard 
                         title="Benchmark AI" 
                         desc="Estima FPS y rendimiento"
                         icon={<BarChart2 size={32} />}
                         color="blue"
                         onClick={() => setView(ViewState.BENCHMARK)}
-                    />
-                    <DashboardCard 
-                        title="Comunidad" 
-                        desc="Comparte y recibe feedback"
-                        icon={<Users size={32} />}
-                        color="orange"
-                        onClick={() => setView(ViewState.FORUM)}
                     />
                 </div>
 
@@ -357,22 +406,28 @@ export default function App() {
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-3 gap-2">
                                 <button 
                                     onClick={clearBuild}
-                                    className="px-3 py-2.5 rounded-lg font-bold text-slate-400 bg-slate-800/50 hover:bg-slate-700/50 transition text-xs border border-slate-700/50"
+                                    className="px-2 py-2.5 rounded-lg font-bold text-slate-400 bg-slate-800/50 hover:bg-slate-700/50 transition text-xs border border-slate-700/50"
                                 >
                                     Limpiar
+                                </button>
+                                <button
+                                    onClick={saveCurrentBuild}
+                                    className="px-2 py-2.5 rounded-lg font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 transition text-xs border border-cyan-500/30 flex items-center justify-center gap-1"
+                                >
+                                    <Save size={14} /> Guardar
                                 </button>
                                 <button 
                                     onClick={runValidation}
                                     disabled={validating || currentBuild.components.length === 0}
-                                    className={`px-3 py-2.5 rounded-lg font-bold text-white transition flex items-center justify-center gap-2 text-xs shadow-lg shadow-indigo-500/20 border border-transparent ${
+                                    className={`px-2 py-2.5 rounded-lg font-bold text-white transition flex items-center justify-center gap-2 text-xs shadow-lg shadow-indigo-500/20 border border-transparent ${
                                         validating ? 'bg-slate-600 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-indigo-500/30'
                                     }`}
                                 >
                                     {validating ? <Zap size={14} className="animate-spin" /> : <Zap size={14} />}
-                                    {validating ? 'Analizando...' : 'Validar AI'}
+                                    {validating ? 'Validar' : 'Validar'}
                                 </button>
                             </div>
                         </div>
@@ -448,6 +503,75 @@ export default function App() {
                         </div>
                     </div>
                 </div>
+            </div>
+        )}
+
+        {/* SAVED BUILDS VIEW */}
+        {view === ViewState.SAVED_BUILDS && (
+            <div className="animate-fade-in max-w-6xl mx-auto">
+                <div className="flex items-center gap-4 mb-8">
+                    <button onClick={() => setView(ViewState.DASHBOARD)} className="bg-slate-800 p-2 rounded-lg hover:bg-slate-700 transition">
+                        <ChevronRight className="rotate-180" />
+                    </button>
+                    <h2 className="text-3xl font-black text-white">Mis Builds Guardadas</h2>
+                </div>
+
+                {savedBuilds.length === 0 ? (
+                    <div className="text-center py-20 bg-slate-900/60 rounded-3xl border border-slate-700/50 backdrop-blur-xl">
+                        <Folder size={64} className="mx-auto text-slate-600 mb-4" />
+                        <h3 className="text-xl font-bold text-white mb-2">No tienes configuraciones guardadas</h3>
+                        <p className="text-slate-400 mb-6">Ve al constructor y guarda tu primera PC.</p>
+                        <button onClick={() => setView(ViewState.BUILDER)} className="bg-cyan-600 px-6 py-3 rounded-xl text-white font-bold hover:bg-cyan-500 transition">
+                            Ir al Constructor
+                        </button>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {savedBuilds.map((build) => (
+                            <div key={build.id} className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 hover:border-cyan-500/30 transition shadow-lg group">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h3 className="font-bold text-lg text-white group-hover:text-cyan-400 transition">{build.name}</h3>
+                                        <div className="flex items-center gap-2 text-slate-400 text-xs mt-1">
+                                            <Clock size={12} />
+                                            <span>{build.date || 'Reciente'}</span>
+                                        </div>
+                                    </div>
+                                    <span className="bg-cyan-500/10 text-cyan-400 px-3 py-1 rounded-full text-sm font-mono font-bold border border-cyan-500/20">
+                                        ${build.totalPrice}
+                                    </span>
+                                </div>
+                                
+                                <div className="space-y-2 mb-6">
+                                    {build.components.slice(0, 3).map(c => (
+                                        <div key={c.id} className="flex items-center gap-2 text-sm text-slate-300">
+                                            <div className="w-1.5 h-1.5 bg-slate-500 rounded-full"></div>
+                                            <span className="truncate">{c.name}</span>
+                                        </div>
+                                    ))}
+                                    {build.components.length > 3 && (
+                                        <p className="text-xs text-slate-500 pl-3.5">+ {build.components.length - 3} componentes más</p>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-3 mt-auto">
+                                    <button 
+                                        onClick={() => loadSavedBuild(build)}
+                                        className="flex-1 bg-slate-700 hover:bg-cyan-600 hover:text-white text-slate-200 py-2 rounded-lg text-sm font-bold transition flex justify-center items-center gap-2"
+                                    >
+                                        <Monitor size={16} /> Cargar
+                                    </button>
+                                    <button 
+                                        onClick={() => deleteSavedBuild(build.id)}
+                                        className="px-3 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg transition"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         )}
 
@@ -615,6 +739,7 @@ const DashboardCard = ({ title, desc, icon, color, onClick }: any) => {
         purple: 'bg-purple-500/5 text-purple-400 border-purple-500/20 hover:border-purple-500/50 hover:bg-purple-500/10 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]',
         blue: 'bg-blue-500/5 text-blue-400 border-blue-500/20 hover:border-blue-500/50 hover:bg-blue-500/10 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]',
         orange: 'bg-orange-500/5 text-orange-400 border-orange-500/20 hover:border-orange-500/50 hover:bg-orange-500/10 hover:shadow-[0_0_20px_rgba(249,115,22,0.15)]',
+        pink: 'bg-pink-500/5 text-pink-400 border-pink-500/20 hover:border-pink-500/50 hover:bg-pink-500/10 hover:shadow-[0_0_20px_rgba(236,72,153,0.15)]',
     };
 
     return (

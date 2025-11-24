@@ -4,7 +4,8 @@ export enum ViewState {
   BUILDER = 'BUILDER',
   SCANNER = 'SCANNER',
   BENCHMARK = 'BENCHMARK',
-  FORUM = 'FORUM'
+  FORUM = 'FORUM',
+  SAVED_BUILDS = 'SAVED_BUILDS'
 }
 
 export enum ComponentType {
@@ -31,6 +32,7 @@ export interface Build {
   name: string;
   components: PCComponent[];
   totalPrice: number;
+  date?: string;
   compatibility?: {
     compatible: boolean;
     issues: string[];

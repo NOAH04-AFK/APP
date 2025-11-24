@@ -1,10 +1,11 @@
-import { GoogleGenAI, Schema, Type } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { PCComponent, ComponentType } from "../types";
 
+// The API key must be obtained exclusively from the environment variable process.env.API_KEY
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Schema for Validator Response
-const validatorSchema: Schema = {
+const validatorSchema = {
   type: Type.OBJECT,
   properties: {
     compatible: { type: Type.BOOLEAN, description: "True if all components are compatible." },
@@ -23,7 +24,7 @@ const validatorSchema: Schema = {
 };
 
 // Schema for Benchmark Response
-const benchmarkSchema: Schema = {
+const benchmarkSchema = {
   type: Type.OBJECT,
   properties: {
     gamingScore: { type: Type.NUMBER, description: "Score from 0-100 for Gaming" },
